@@ -1,0 +1,58 @@
+//Smart contract for Education to store student details by university authorities.
+pragma solidity ^0.5.0;
+import "github.com/OpenZeppelin/zeppelin-solidity/contracts/math/SafeMath.sol";
+
+contract BCOwner{
+    address Owner;
+    using SafeMath for uint;
+    //Student Information to store into Blockchain
+    struct student{
+        bool isuidgenerated; //uint8 is a bool type
+        string name;
+        string degree;
+        uint32 marks;
+        string grade;
+    }
+    mapping ( address => student) public studentmapping;
+    mapping ( address => bool) public authoritymapping;
+
+    constructor() {
+        Owner = msg.sender;
+    }
+
+    modifier onlyOwner(){
+        require (Owner == msg.sender);
+        _;
+    }
+    //Approval for University Authorities set by Education Dept (BC Owner) by taking Authority address
+    // With this approval, Authority can add student records in Blockchian 
+    function setAuthority( address _address) onlyOwner public{
+        require(!authoritymapping[_address]);
+        authoritymapping[_address] = true;
+    }
+
+    // This function must be call from University Authority address with student details 
+    //to update student details into the Blockchain.
+    function setStudentData (address memory uniqueId, string memory _name, string memory _degree, 
+                              uint32 _marks, string _grade) returns ( string ) {
+        require( authoritymapping[msg.sender]);
+        require(studentmapping[uniqueId].isuidgenerated);
+        studentmapping[uniqueId].name = _name;
+        studentmapping[uniqueId].degree = _degree;
+        studentmapping[uniqueId].marks = _marks;
+        studentmapping[uniqueId].grade = _grade;
+        return "Student details has been updated successfully in Blockchain";
+    }
+
+    //Education Owner will generate address for students by taking 
+    //their details like aadhar card number and Name
+    // This generated address have to give for University Authorities.
+    function setStudentAddress(string memory _name, string memory _AadharNo) 
+                                 onlyOwner public returns ( address ) {
+        address uniqueId = address(sha256(msg.sender, now));
+        require(!studentmapping[uniqueId].isuidgenerated);
+        studentmapping[uniqueId].isuidgenerated = true;
+        return uniqueId; 
+    }
+
+}

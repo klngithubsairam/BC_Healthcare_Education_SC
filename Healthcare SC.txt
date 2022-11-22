@@ -1,0 +1,75 @@
+//Healthcare and Insurance Smart contract.
+pragma solidity ^0.5.0;    // floating pragma
+import "github.com/OpenZeppelin/zeppelin-solidity/contracts/math/SafeMath.sol";
+
+contract HealthOrg {
+    address Owner;
+    using SafeMath for uint;
+    //Patient Information to store into Blockchain
+    struct patient {
+        bool isuidgenerated;
+        string aadhar;
+        string report;
+        uint amountInsured;
+    }
+
+    struct Doctor {
+        bool isuidgenerated;
+        string name;
+        string aadhar;
+        string doctorCert;
+    }
+
+    mapping ( address => patient) public patientmapping;
+    //mapping ( address => bool) public doctormapping;
+    mapping ( address => Doctor) public doctormapping;
+
+    constructor() public {
+        Owner = msg.sender;
+    }
+
+    modifier onlyOwner(){
+        require (Owner == msg.sender);
+        _;
+    }
+    
+    function setDoctorAddress (string _aadhar,  string _name, string _doctorCertHash) 
+                                            onlyOwner returns (address) {
+        address uniqueId = address(sha256(msg.sender, now));
+        doctormapping[uniqueId].aadhar = _aadhar;
+        doctormapping[uniqueId].name = _name;
+        doctormapping[uniqueId].doctorCert = _doctorCertHash;
+        return uniqueId;
+    }
+
+    //Approval for Doctor set by Health Org by taking Doctor address
+    // With this approval, Doctor can add patient records in Blockchian 
+    // and Doctor can claim Insurance for patients.
+    function setDoctorApproval( address memory _address) onlyOwner public {
+        require(!doctormapping[_address]);
+        doctormapping[_address] = true;
+    }
+    //Health Organization will generate address for patients by taking their details 
+    //like aadhar card number and Insured amount
+    // This generated address have to give for doctors to claim Insurance for their treatment.
+    function getPatientInsuredAddress (string memory _aadhar,  uint32 memory _amountInsured) 
+                                            onlyOwner public returns (address) {
+        address uniqueId = address(sha256(msg.sender, now));
+        require(!patientmapping[uniqueId].isuidgenerated);
+        patientmapping[uniqueId].isuidgenerated = true;
+        patientmapping[uniqueId].aadhar = _aadhar;
+        patientmapping[uniqueId].amountInsured = _amountInsured;
+        return uniqueId;
+    }
+    // This function must be call from Doctor address with patient details
+    function useInsurance( address memory _patientAddress,  uint32 memory _amountUsed, string memory _reportHash) public returns (string memory) {
+        require( doctormapping[msg.sender]);
+        if( patientmapping[_patientAddress].amountInsured < _amountUsed) {
+            revert();
+        }
+        patientmapping[_patientAddress].report= _reportHash;
+        patientmapping[_patientAddress].amountInsured -= _amountUsed;
+        return "Insurance has been used successfully";
+    }
+
+}
